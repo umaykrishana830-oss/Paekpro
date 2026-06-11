@@ -1,0 +1,726 @@
+import { useState } from "react";
+
+// ─── DESIGN TOKENS ───────────────────────────────────────────────────────────
+// Palette: Deep obsidian black + molten gold + warm off-white
+// #0A0A0A  obsidian (bg)
+// #111111  surface
+// #1A1A1A  card
+// #C9A84C  gold-primary
+// #E8C96B  gold-light
+// #F5F0E8  cream-text
+// #6B6B6B  muted
+// Type: Playfair Display (display) + Inter (body)
+// Signature: A glowing gold "progress ring" that pulses on the dashboard
+
+const COLORS = {
+  bg: "#0A0A0A",
+  surface: "#111111",
+  card: "#1A1A1A",
+  border: "#2A2A2A",
+  gold: "#C9A84C",
+  goldLight: "#E8C96B",
+  cream: "#F5F0E8",
+  muted: "#6B6B6B",
+  success: "#4CAF50",
+  danger: "#E53935",
+};
+
+const styles = {
+  app: {
+    fontFamily: "'Inter', sans-serif",
+    background: COLORS.bg,
+    minHeight: "100vh",
+    color: COLORS.cream,
+  },
+  goldGradient: `linear-gradient(135deg, ${COLORS.gold}, ${COLORS.goldLight})`,
+};
+
+// ─── MOCK DATA ────────────────────────────────────────────────────────────────
+const MOCK_GYMS = [
+  { id: 1, name: "Elite Fitness Kathmandu", owner: "Ramesh Shrestha", plan: "Elite", members: 142, status: "active", color: "#1a1a2e", logo: "EF", monthlyFee: 7999, joined: "2026-01-15" },
+  { id: 2, name: "Peak Performance Gym", owner: "Sunita Tamang", plan: "Pro", members: 87, status: "active", color: "#0d1b2a", logo: "PP", monthlyFee: 4999, joined: "2026-02-20" },
+  { id: 3, name: "Champion's Arena", owner: "Bikash KC", plan: "Starter", members: 34, status: "active", color: "#1b1a2e", logo: "CA", monthlyFee: 2999, joined: "2026-03-01" },
+  { id: 4, name: "FitZone Naya Bazar", owner: "Priya Gurung", plan: "Pro", members: 156, status: "expired", color: "#1a0a0a", logo: "FZ", monthlyFee: 4999, joined: "2026-01-05" },
+];
+
+const MOCK_MEMBERS = [
+  { id: 1, name: "Aarav Sharma", age: 24, weight: 78, height: 175, goal: "Weight Loss", joined: "2026-05-01", gymId: 1 },
+  { id: 2, name: "Priya Thapa", age: 28, weight: 62, height: 163, goal: "Muscle Gain", joined: "2026-04-15", gymId: 1 },
+  { id: 3, name: "Rohan Magar", age: 32, weight: 90, height: 180, goal: "Athletic", joined: "2026-03-20", gymId: 1 },
+  { id: 4, name: "Sneha Rai", age: 22, weight: 55, height: 158, goal: "Toning", joined: "2026-05-10", gymId: 2 },
+];
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function calcBMI(weight, height) {
+  const h = height / 100;
+  return (weight / (h * h)).toFixed(1);
+}
+
+function bmiCategory(bmi) {
+  if (bmi < 18.5) return { label: "Underweight", color: "#2196F3" };
+  if (bmi < 25) return { label: "Normal", color: COLORS.success };
+  if (bmi < 30) return { label: "Overweight", color: "#FF9800" };
+  return { label: "Obese", color: COLORS.danger };
+}
+
+function workoutPlan(goal) {
+  const plans = {
+    "Weight Loss": ["30 min Cardio (Treadmill)", "20 min HIIT Circuit", "Core Workout — 3 sets", "Cool down stretch — 10 min"],
+    "Muscle Gain": ["Bench Press — 4×8", "Deadlift — 4×6", "Pull-ups — 3×10", "Shoulder Press — 3×10"],
+    "Athletic": ["Agility Ladder Drills", "Box Jumps — 4×10", "Sprint Intervals", "Functional Strength Circuit"],
+    "Toning": ["Full Body Circuit — 3 rounds", "Resistance Band Workout", "Pilates Core — 20 min", "Yoga Flexibility — 15 min"],
+  };
+  return plans[goal] || plans["Weight Loss"];
+}
+
+function mealPlan(goal) {
+  const plans = {
+    "Weight Loss": ["बिहान: 2 boiled eggs + green tea", "Lunch: Dal bhat (half rice) + salad", "Snack: Apple + handful nuts", "Dinner: Chicken soup + roti"],
+    "Muscle Gain": ["बिहान: Oatmeal + banana + milk", "Lunch: Full dal bhat + chicken", "Snack: Peanut butter sandwich", "Dinner: Rice + fish + vegetables"],
+    "Athletic": ["बिहान: Banana smoothie + eggs", "Lunch: Brown rice + lentils + chicken", "Snack: Energy bar + coconut water", "Dinner: Quinoa + mixed vegetables"],
+    "Toning": ["बिहान: Yogurt + fruits", "Lunch: Vegetable dal bhat", "Snack: Green smoothie", "Dinner: Grilled paneer + salad"],
+  };
+  return plans[goal] || plans["Weight Loss"];
+}
+
+// ─── COMPONENTS ───────────────────────────────────────────────────────────────
+
+function GoldDivider() {
+  return <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${COLORS.gold}, transparent)`, margin: "20px 0" }} />;
+}
+
+function Badge({ text, color }) {
+  return (
+    <span style={{
+      background: color + "22",
+      color: color,
+      border: `1px solid ${color}44`,
+      borderRadius: 20,
+      padding: "2px 10px",
+      fontSize: 11,
+      fontWeight: 600,
+      letterSpacing: 0.5,
+      textTransform: "uppercase",
+    }}>{text}</span>
+  );
+}
+
+function Card({ children, style = {} }) {
+  return (
+    <div style={{
+      background: COLORS.card,
+      border: `1px solid ${COLORS.border}`,
+      borderRadius: 12,
+      padding: 20,
+      ...style,
+    }}>{children}</div>
+  );
+}
+
+function GoldButton({ children, onClick, small, outline, danger }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        background: danger ? (hov ? "#c62828" : COLORS.danger) : outline ? "transparent" : hov ? COLORS.goldLight : COLORS.gold,
+        color: outline ? COLORS.gold : danger ? "#fff" : "#000",
+        border: outline ? `1px solid ${COLORS.gold}` : "none",
+        borderRadius: 8,
+        padding: small ? "6px 16px" : "10px 24px",
+        fontSize: small ? 12 : 14,
+        fontWeight: 700,
+        cursor: "pointer",
+        letterSpacing: 0.5,
+        transition: "all 0.2s",
+      }}
+    >{children}</button>
+  );
+}
+
+function BMIRing({ bmi }) {
+  const cat = bmiCategory(parseFloat(bmi));
+  const pct = Math.min(Math.max((parseFloat(bmi) - 10) / 30, 0), 1);
+  const r = 44, cx = 54, cy = 54;
+  const circ = 2 * Math.PI * r;
+  return (
+    <div style={{ textAlign: "center" }}>
+      <svg width={108} height={108} style={{ filter: `drop-shadow(0 0 8px ${cat.color}66)` }}>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke={COLORS.border} strokeWidth={8} />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke={cat.color} strokeWidth={8}
+          strokeDasharray={circ} strokeDashoffset={circ * (1 - pct)}
+          strokeLinecap="round" transform={`rotate(-90 ${cx} ${cy})`}
+          style={{ transition: "stroke-dashoffset 1s ease" }} />
+        <text x={cx} y={cy - 4} textAnchor="middle" fill={COLORS.cream} fontSize={18} fontWeight={700}>{bmi}</text>
+        <text x={cx} y={cy + 14} textAnchor="middle" fill={COLORS.muted} fontSize={10}>BMI</text>
+      </svg>
+      <div style={{ color: cat.color, fontWeight: 700, fontSize: 13 }}>{cat.label}</div>
+    </div>
+  );
+}
+
+// ─── VIEWS ───────────────────────────────────────────────────────────────────
+
+// LANDING
+function LandingView({ onLogin }) {
+  return (
+    <div style={{ minHeight: "100vh", background: COLORS.bg, display: "flex", flexDirection: "column" }}>
+      {/* Hero */}
+      <div style={{
+        flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        padding: "60px 24px", textAlign: "center", position: "relative", overflow: "hidden"
+      }}>
+        {/* Ambient glow */}
+        <div style={{
+          position: "absolute", top: "20%", left: "50%", transform: "translateX(-50%)",
+          width: 400, height: 400, borderRadius: "50%",
+          background: `radial-gradient(circle, ${COLORS.gold}15 0%, transparent 70%)`,
+          pointerEvents: "none"
+        }} />
+
+        <div style={{
+          fontSize: 11, letterSpacing: 4, color: COLORS.gold,
+          textTransform: "uppercase", marginBottom: 16, fontWeight: 600
+        }}>Nepal's Premier Gym Platform</div>
+
+        <h1 style={{
+          fontFamily: "'Georgia', serif",
+          fontSize: "clamp(36px, 8vw, 64px)",
+          fontWeight: 700,
+          background: styles.goldGradient,
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          lineHeight: 1.1,
+          marginBottom: 16,
+        }}>PEAK<span style={{ fontWeight: 300 }}>PRO</span></h1>
+
+        <p style={{ color: COLORS.muted, fontSize: 16, maxWidth: 380, lineHeight: 1.7, marginBottom: 40 }}>
+          AI-powered gym management designed for Kathmandu's elite fitness centres. Transform how your members train.
+        </p>
+
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+          <GoldButton onClick={() => onLogin("admin")}>Admin Login</GoldButton>
+          <GoldButton onClick={() => onLogin("owner")} outline>Gym Owner Login</GoldButton>
+          <GoldButton onClick={() => onLogin("member")} outline>Member Login</GoldButton>
+        </div>
+
+        <GoldDivider />
+
+        {/* Features */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 16, maxWidth: 600, width: "100%", marginTop: 8 }}>
+          {[
+            { icon: "🧠", label: "AI Workout Plans" },
+            { icon: "📊", label: "BMI Analysis" },
+            { icon: "🥗", label: "Nepali Meal Plans" },
+            { icon: "👑", label: "Multi-Gym Dashboard" },
+          ].map(f => (
+            <Card key={f.label} style={{ textAlign: "center", padding: 16 }}>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>{f.icon}</div>
+              <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 500 }}>{f.label}</div>
+            </Card>
+          ))}
+        </div>
+
+        <div style={{ marginTop: 40, fontSize: 11, color: COLORS.muted }}>
+          Made with ❤️ by <span style={{ color: COLORS.gold, fontWeight: 600 }}>Krishana Mahara</span> · Kathmandu, Nepal
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ADMIN PANEL
+function AdminView({ onLogout }) {
+  const [activeTab, setActiveTab] = useState("gyms");
+  const [gyms, setGyms] = useState(MOCK_GYMS);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newGym, setNewGym] = useState({ name: "", owner: "", plan: "Starter", monthlyFee: 2999 });
+
+  const totalRevenue = gyms.filter(g => g.status === "active").reduce((s, g) => s + g.monthlyFee, 0);
+  const activeGyms = gyms.filter(g => g.status === "active").length;
+
+  function toggleStatus(id) {
+    setGyms(prev => prev.map(g => g.id === id ? { ...g, status: g.status === "active" ? "expired" : "active" } : g));
+  }
+
+  function addGym() {
+    if (!newGym.name || !newGym.owner) return;
+    setGyms(prev => [...prev, { ...newGym, id: Date.now(), members: 0, status: "active", logo: newGym.name.slice(0, 2).toUpperCase(), color: "#1a1a1a", joined: new Date().toISOString().slice(0, 10) }]);
+    setNewGym({ name: "", owner: "", plan: "Starter", monthlyFee: 2999 });
+    setShowAdd(false);
+  }
+
+  return (
+    <div style={{ minHeight: "100vh", background: COLORS.bg }}>
+      {/* Header */}
+      <div style={{ background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ fontFamily: "'Georgia', serif", fontSize: 20, background: styles.goldGradient, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", fontWeight: 700 }}>PEAKPRO</div>
+          <div style={{ fontSize: 10, color: COLORS.muted, letterSpacing: 2 }}>ADMIN CONTROL</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 12, color: COLORS.gold, fontWeight: 600 }}>Krishana Mahara</div>
+            <div style={{ fontSize: 10, color: COLORS.muted }}>Super Admin</div>
+          </div>
+          <GoldButton small outline onClick={onLogout}>Logout</GoldButton>
+        </div>
+      </div>
+
+      <div style={{ padding: 20 }}>
+        {/* Stats */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
+          {[
+            { label: "Active Gyms", value: activeGyms, icon: "🏋️" },
+            { label: "Total Gyms", value: gyms.length, icon: "🏢" },
+            { label: "Monthly Revenue", value: `Rs. ${totalRevenue.toLocaleString()}`, icon: "💰" },
+            { label: "Total Members", value: gyms.reduce((s, g) => s + g.members, 0), icon: "👥" },
+          ].map(s => (
+            <Card key={s.label} style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 24, marginBottom: 4 }}>{s.icon}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.gold }}>{s.value}</div>
+              <div style={{ fontSize: 11, color: COLORS.muted }}>{s.label}</div>
+            </Card>
+          ))}
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          {["gyms", "revenue"].map(t => (
+            <button key={t} onClick={() => setActiveTab(t)} style={{
+              background: activeTab === t ? COLORS.gold : "transparent",
+              color: activeTab === t ? "#000" : COLORS.muted,
+              border: `1px solid ${activeTab === t ? COLORS.gold : COLORS.border}`,
+              borderRadius: 8, padding: "6px 16px", fontSize: 12, fontWeight: 600,
+              cursor: "pointer", textTransform: "capitalize"
+            }}>{t}</button>
+          ))}
+          <div style={{ marginLeft: "auto" }}>
+            <GoldButton small onClick={() => setShowAdd(!showAdd)}>+ Add Gym</GoldButton>
+          </div>
+        </div>
+
+        {/* Add Gym Form */}
+        {showAdd && (
+          <Card style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 13, color: COLORS.gold, fontWeight: 700, marginBottom: 12 }}>New Gym Registration</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {[
+                { key: "name", label: "Gym Name", placeholder: "Elite Fitness..." },
+                { key: "owner", label: "Owner Name", placeholder: "Ram Sharma..." },
+              ].map(f => (
+                <div key={f.key}>
+                  <div style={{ fontSize: 11, color: COLORS.muted, marginBottom: 4 }}>{f.label}</div>
+                  <input value={newGym[f.key]} onChange={e => setNewGym(p => ({ ...p, [f.key]: e.target.value }))}
+                    placeholder={f.placeholder}
+                    style={{ width: "100%", background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "8px 10px", color: COLORS.cream, fontSize: 13, boxSizing: "border-box" }} />
+                </div>
+              ))}
+              <div>
+                <div style={{ fontSize: 11, color: COLORS.muted, marginBottom: 4 }}>Plan</div>
+                <select value={newGym.plan} onChange={e => setNewGym(p => ({ ...p, plan: e.target.value, monthlyFee: e.target.value === "Elite" ? 7999 : e.target.value === "Pro" ? 4999 : 2999 }))}
+                  style={{ width: "100%", background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "8px 10px", color: COLORS.cream, fontSize: 13 }}>
+                  <option>Starter</option><option>Pro</option><option>Elite</option>
+                </select>
+              </div>
+              <div style={{ display: "flex", alignItems: "flex-end" }}>
+                <GoldButton onClick={addGym}>Register Gym</GoldButton>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Gym List */}
+        {activeTab === "gyms" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {gyms.map(gym => (
+              <Card key={gym.id}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{
+                    width: 44, height: 44, borderRadius: 10, background: styles.goldGradient,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 14, fontWeight: 800, color: "#000", flexShrink: 0
+                  }}>{gym.logo}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.cream, marginBottom: 2 }}>{gym.name}</div>
+                    <div style={{ fontSize: 11, color: COLORS.muted }}>{gym.owner} · {gym.members} members</div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <Badge text={gym.plan} color={gym.plan === "Elite" ? COLORS.gold : gym.plan === "Pro" ? "#7C3AED" : COLORS.muted} />
+                    <div style={{ marginTop: 4 }}>
+                      <Badge text={gym.status} color={gym.status === "active" ? COLORS.success : COLORS.danger} />
+                    </div>
+                  </div>
+                </div>
+                <GoldDivider />
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ fontSize: 13, color: COLORS.gold, fontWeight: 700 }}>Rs. {gym.monthlyFee.toLocaleString()}/month</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <GoldButton small outline onClick={() => toggleStatus(gym.id)}>
+                      {gym.status === "active" ? "Deactivate" : "Activate"}
+                    </GoldButton>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Revenue */}
+        {activeTab === "revenue" && (
+          <div>
+            <Card style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: COLORS.muted, marginBottom: 4 }}>This Month's Revenue</div>
+              <div style={{ fontSize: 32, fontWeight: 800, background: styles.goldGradient, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                Rs. {totalRevenue.toLocaleString()}
+              </div>
+              <div style={{ fontSize: 11, color: COLORS.muted, marginTop: 4 }}>From {activeGyms} active subscriptions</div>
+            </Card>
+            {gyms.map(gym => (
+              <Card key={gym.id} style={{ marginBottom: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{gym.name}</div>
+                    <div style={{ fontSize: 11, color: COLORS.muted }}>{gym.plan} Plan</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: gym.status === "active" ? COLORS.gold : COLORS.muted }}>
+                      {gym.status === "active" ? `Rs. ${gym.monthlyFee.toLocaleString()}` : "—"}
+                    </div>
+                    <Badge text={gym.status} color={gym.status === "active" ? COLORS.success : COLORS.danger} />
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// GYM OWNER PANEL
+function OwnerView({ onLogout }) {
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [members, setMembers] = useState(MOCK_MEMBERS.filter(m => m.gymId === 1));
+  const [showAdd, setShowAdd] = useState(false);
+  const [newMember, setNewMember] = useState({ name: "", age: "", weight: "", height: "", goal: "Weight Loss" });
+  const gym = MOCK_GYMS[0];
+
+  function addMember() {
+    if (!newMember.name) return;
+    setMembers(prev => [...prev, { ...newMember, id: Date.now(), gymId: 1, joined: new Date().toISOString().slice(0, 10), age: +newMember.age, weight: +newMember.weight, height: +newMember.height }]);
+    setNewMember({ name: "", age: "", weight: "", height: "", goal: "Weight Loss" });
+    setShowAdd(false);
+  }
+
+  return (
+    <div style={{ minHeight: "100vh", background: COLORS.bg }}>
+      <div style={{ background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ fontFamily: "'Georgia', serif", fontSize: 20, background: styles.goldGradient, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", fontWeight: 700 }}>PEAKPRO</div>
+          <div style={{ fontSize: 10, color: COLORS.muted, letterSpacing: 2 }}>{gym.name.toUpperCase()}</div>
+        </div>
+        <GoldButton small outline onClick={onLogout}>Logout</GoldButton>
+      </div>
+
+      <div style={{ padding: 20 }}>
+        {/* Stats */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20 }}>
+          {[
+            { label: "Members", value: members.length, icon: "👥" },
+            { label: "Plan", value: gym.plan, icon: "👑" },
+            { label: "Status", value: "Active", icon: "✅" },
+          ].map(s => (
+            <Card key={s.label} style={{ textAlign: "center", padding: 14 }}>
+              <div style={{ fontSize: 20 }}>{s.icon}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.gold }}>{s.value}</div>
+              <div style={{ fontSize: 10, color: COLORS.muted }}>{s.label}</div>
+            </Card>
+          ))}
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+          {["dashboard", "members"].map(t => (
+            <button key={t} onClick={() => setActiveTab(t)} style={{
+              background: activeTab === t ? COLORS.gold : "transparent",
+              color: activeTab === t ? "#000" : COLORS.muted,
+              border: `1px solid ${activeTab === t ? COLORS.gold : COLORS.border}`,
+              borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600,
+              cursor: "pointer", textTransform: "capitalize"
+            }}>{t}</button>
+          ))}
+          {activeTab === "members" && (
+            <div style={{ marginLeft: "auto" }}>
+              <GoldButton small onClick={() => setShowAdd(!showAdd)}>+ Add Member</GoldButton>
+            </div>
+          )}
+        </div>
+
+        {activeTab === "dashboard" && (
+          <div>
+            <Card style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: COLORS.gold, fontWeight: 700, marginBottom: 12 }}>Member Goals Distribution</div>
+              {["Weight Loss", "Muscle Gain", "Athletic", "Toning"].map(goal => {
+                const count = members.filter(m => m.goal === goal).length;
+                const pct = members.length ? (count / members.length) * 100 : 0;
+                return (
+                  <div key={goal} style={{ marginBottom: 10 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                      <span style={{ color: COLORS.cream }}>{goal}</span>
+                      <span style={{ color: COLORS.muted }}>{count} members</span>
+                    </div>
+                    <div style={{ background: COLORS.border, borderRadius: 4, height: 6 }}>
+                      <div style={{ width: `${pct}%`, height: "100%", background: styles.goldGradient, borderRadius: 4, transition: "width 0.8s ease" }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </Card>
+            <Card>
+              <div style={{ fontSize: 13, color: COLORS.gold, fontWeight: 700, marginBottom: 8 }}>Recent Members</div>
+              {members.slice(-3).reverse().map(m => (
+                <div key={m.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: `1px solid ${COLORS.border}` }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{m.name}</div>
+                    <div style={{ fontSize: 11, color: COLORS.muted }}>{m.goal}</div>
+                  </div>
+                  <div style={{ fontSize: 11, color: COLORS.muted }}>{m.joined}</div>
+                </div>
+              ))}
+            </Card>
+          </div>
+        )}
+
+        {activeTab === "members" && (
+          <div>
+            {showAdd && (
+              <Card style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 13, color: COLORS.gold, fontWeight: 700, marginBottom: 10 }}>Add New Member</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {[
+                    { key: "name", label: "Full Name", placeholder: "Ram Sharma" },
+                    { key: "age", label: "Age", placeholder: "25", type: "number" },
+                    { key: "weight", label: "Weight (kg)", placeholder: "70", type: "number" },
+                    { key: "height", label: "Height (cm)", placeholder: "170", type: "number" },
+                  ].map(f => (
+                    <div key={f.key}>
+                      <div style={{ fontSize: 11, color: COLORS.muted, marginBottom: 4 }}>{f.label}</div>
+                      <input type={f.type || "text"} value={newMember[f.key]} onChange={e => setNewMember(p => ({ ...p, [f.key]: e.target.value }))}
+                        placeholder={f.placeholder}
+                        style={{ width: "100%", background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "8px 10px", color: COLORS.cream, fontSize: 13, boxSizing: "border-box" }} />
+                    </div>
+                  ))}
+                  <div>
+                    <div style={{ fontSize: 11, color: COLORS.muted, marginBottom: 4 }}>Fitness Goal</div>
+                    <select value={newMember.goal} onChange={e => setNewMember(p => ({ ...p, goal: e.target.value }))}
+                      style={{ width: "100%", background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "8px 10px", color: COLORS.cream, fontSize: 13 }}>
+                      {["Weight Loss", "Muscle Gain", "Athletic", "Toning"].map(g => <option key={g}>{g}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "flex-end" }}>
+                    <GoldButton onClick={addMember}>Add Member</GoldButton>
+                  </div>
+                </div>
+              </Card>
+            )}
+            {members.map(m => {
+              const bmi = calcBMI(m.weight, m.height);
+              const cat = bmiCategory(parseFloat(bmi));
+              return (
+                <Card key={m.id} style={{ marginBottom: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700 }}>{m.name}</div>
+                      <div style={{ fontSize: 11, color: COLORS.muted }}>Age {m.age} · {m.weight}kg · {m.height}cm</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: cat.color }}>{bmi}</div>
+                      <div style={{ fontSize: 10, color: cat.color }}>{cat.label}</div>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 6 }}>
+                    <Badge text={m.goal} color={COLORS.gold} />
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// MEMBER PANEL
+function MemberView({ onLogout }) {
+  const member = MOCK_MEMBERS[0];
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const bmi = calcBMI(member.weight, member.height);
+  const plan = workoutPlan(member.goal);
+  const meals = mealPlan(member.goal);
+
+  return (
+    <div style={{ minHeight: "100vh", background: COLORS.bg }}>
+      <div style={{ background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ fontFamily: "'Georgia', serif", fontSize: 20, background: styles.goldGradient, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", fontWeight: 700 }}>PEAKPRO</div>
+          <div style={{ fontSize: 10, color: COLORS.muted, letterSpacing: 2 }}>MEMBER PORTAL</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 12, fontWeight: 600 }}>{member.name}</div>
+            <div style={{ fontSize: 10, color: COLORS.gold }}>Elite Member</div>
+          </div>
+          <GoldButton small outline onClick={onLogout}>Logout</GoldButton>
+        </div>
+      </div>
+
+      <div style={{ padding: 20 }}>
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 20, overflowX: "auto" }}>
+          {["dashboard", "workout", "nutrition", "progress"].map(t => (
+            <button key={t} onClick={() => setActiveTab(t)} style={{
+              background: activeTab === t ? COLORS.gold : "transparent",
+              color: activeTab === t ? "#000" : COLORS.muted,
+              border: `1px solid ${activeTab === t ? COLORS.gold : COLORS.border}`,
+              borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600,
+              cursor: "pointer", textTransform: "capitalize", flexShrink: 0
+            }}>{t}</button>
+          ))}
+        </div>
+
+        {activeTab === "dashboard" && (
+          <div>
+            <Card style={{ marginBottom: 12, textAlign: "center" }}>
+              <div style={{ fontSize: 11, color: COLORS.muted, letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>Your Body Analysis</div>
+              <BMIRing bmi={bmi} />
+              <GoldDivider />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+                {[
+                  { label: "Weight", value: `${member.weight} kg` },
+                  { label: "Height", value: `${member.height} cm` },
+                  { label: "Goal", value: member.goal },
+                ].map(s => (
+                  <div key={s.label}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.gold }}>{s.value}</div>
+                    <div style={{ fontSize: 10, color: COLORS.muted }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card>
+              <div style={{ fontSize: 13, color: COLORS.gold, fontWeight: 700, marginBottom: 10 }}>Today's AI Tip 🧠</div>
+              <div style={{ fontSize: 13, color: COLORS.cream, lineHeight: 1.7 }}>
+                Based on your <strong style={{ color: COLORS.gold }}>{member.goal}</strong> goal, focus on consistency over intensity. Small daily wins compound into extraordinary results. Stay hydrated — aim for 3L water today!
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === "workout" && (
+          <div>
+            <div style={{ fontSize: 11, color: COLORS.muted, letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
+              AI Workout Plan · {member.goal}
+            </div>
+            {plan.map((exercise, i) => (
+              <Card key={i} style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: "50%", background: styles.goldGradient,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 12, fontWeight: 800, color: "#000", flexShrink: 0
+                }}>{i + 1}</div>
+                <div style={{ fontSize: 14, fontWeight: 500 }}>{exercise}</div>
+              </Card>
+            ))}
+            <Card style={{ marginTop: 12, background: `${COLORS.gold}11`, border: `1px solid ${COLORS.gold}33` }}>
+              <div style={{ fontSize: 12, color: COLORS.gold, fontWeight: 600, marginBottom: 4 }}>💡 Pro Tip</div>
+              <div style={{ fontSize: 12, color: COLORS.cream }}>Rest 60-90 seconds between sets. Track your reps to see weekly progress!</div>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === "nutrition" && (
+          <div>
+            <div style={{ fontSize: 11, color: COLORS.muted, letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
+              Nepali Meal Plan · {member.goal}
+            </div>
+            {meals.map((meal, i) => {
+              const icons = ["🌅", "☀️", "🍎", "🌙"];
+              return (
+                <Card key={i} style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ fontSize: 24, flexShrink: 0 }}>{icons[i]}</div>
+                  <div style={{ fontSize: 13 }}>{meal}</div>
+                </Card>
+              );
+            })}
+            <Card style={{ marginTop: 12, background: `${COLORS.gold}11`, border: `1px solid ${COLORS.gold}33` }}>
+              <div style={{ fontSize: 12, color: COLORS.gold, fontWeight: 600, marginBottom: 4 }}>💧 Hydration Goal</div>
+              <div style={{ fontSize: 12, color: COLORS.cream }}>Drink 3 liters of water daily. Start your morning with warm lemon water!</div>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === "progress" && (
+          <div>
+            <Card style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: COLORS.gold, fontWeight: 700, marginBottom: 12 }}>Weekly Progress</div>
+              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, i) => {
+                const done = i < 4;
+                return (
+                  <div key={day} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                    <div style={{ width: 36, fontSize: 11, color: COLORS.muted }}>{day}</div>
+                    <div style={{ flex: 1, height: 8, background: COLORS.border, borderRadius: 4 }}>
+                      {done && <div style={{ width: `${60 + i * 8}%`, height: "100%", background: styles.goldGradient, borderRadius: 4 }} />}
+                    </div>
+                    <div style={{ fontSize: 16 }}>{done ? "✅" : "⬜"}</div>
+                  </div>
+                );
+              })}
+            </Card>
+            <Card>
+              <div style={{ fontSize: 13, color: COLORS.gold, fontWeight: 700, marginBottom: 10 }}>Achievements 🏆</div>
+              {["First Week Complete", "5 Workouts Done", "BMI Tracked"].map(a => (
+                <div key={a} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <div style={{ fontSize: 16 }}>🥇</div>
+                  <div style={{ fontSize: 13 }}>{a}</div>
+                </div>
+              ))}
+            </Card>
+          </div>
+        )}
+      </div>
+
+      <div style={{ textAlign: "center", padding: "20px 0 30px", fontSize: 11, color: COLORS.muted }}>
+        Made with ❤️ by <span style={{ color: COLORS.gold }}>Krishana Mahara</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── ROOT APP ─────────────────────────────────────────────────────────────────
+export default function App() {
+  const [view, setView] = useState("landing");
+
+  function handleLogin(role) {
+    setView(role);
+  }
+
+  function handleLogout() {
+    setView("landing");
+  }
+
+  return (
+    <div style={styles.app}>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+      {view === "landing" && <LandingView onLogin={handleLogin} />}
+      {view === "admin" && <AdminView onLogout={handleLogout} />}
+      {view === "owner" && <OwnerView onLogout={handleLogout} />}
+      {view === "member" && <MemberView onLogout={handleLogout} />}
+    </div>
+  );
+}
