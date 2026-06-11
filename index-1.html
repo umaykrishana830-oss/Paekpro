@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PeakPro — Nepal's #1 AI Gym Platform</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0A0A0A; --surface: #111111; --card: #1A1A1A;
+    --border: #2A2A2A; --gold: #C9A84C; --gold-light: #E8C96B;
+    --cream: #F5F0E8; --muted: #6B6B6B; --success: #4CAF50; --danger: #E53935;
+  }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--cream); min-height: 100vh; }
+  .hidden { display: none !important; }
+  .gold-text { background: linear-gradient(135deg, var(--gold), var(--gold-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .btn { border: none; border-radius: 8px; padding: 10px 24px; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+  .btn-gold { background: var(--gold); color: #000; width: 100%; margin-top: 8px; }
+  .btn-gold:hover { background: var(--gold-light); }
+  .btn-outline { background: transparent; color: var(--gold); border: 1px solid var(--gold); }
+  .btn-sm { padding: 6px 16px; font-size: 12px; width: auto; }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .divider { height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); margin: 16px 0; }
+  .badge { border-radius: 20px; padding: 2px 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+  input, select { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; color: var(--cream); font-size: 14px; margin-bottom: 10px; }
+  input::placeholder { color: var(--muted); }
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .logo { font-family: Georgia, serif; font-size: 20px; font-weight: 700; }
+  .logo-sub { font-size: 10px; color: var(--muted); letter-spacing: 2px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab { background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; text-transform: capitalize; }
+  .tab.active { background: var(--gold); color: #000; border-color: var(--gold); }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; text-align: center; }
+  .stat-val { font-size: 18px; font-weight: 700; color: var(--gold); }
+  .stat-label { font-size: 10px; color: var(--muted); }
+  .page { padding: 20px; max-width: 600px; margin: 0 auto; }
+  .footer { text-align: center; padding: 20px; font-size: 11px; color: var(--muted); }
+  .glow { position: absolute; top: 20%; left: 50%; transform: translateX(-50%); width: 400px; height: 400px; border-radius: 50%; background: radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%); pointer-events: none; }
+  .progress-bar { background: var(--border); border-radius: 4px; height: 6px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(135deg, var(--gold), var(--gold-light)); border-radius: 4px; }
+  .exercise-item { display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 8px; }
+  .num-circle { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--gold), var(--gold-light)); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #000; flex-shrink: 0; }
+  .gym-row { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 10px; }
+  .gym-logo { width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg, var(--gold), var(--gold-light)); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #000; flex-shrink: 0; }
+  .tip-box { background: rgba(201,168,76,0.07); border: 1px solid rgba(201,168,76,0.2); border-radius: 10px; padding: 14px; margin-top: 12px; }
+  .error-msg { color: var(--danger); font-size: 12px; margin-top: 6px; text-align: center; }
+  .success-msg { color: var(--success); font-size: 12px; margin-top: 6px; text-align: center; }
+  .loading { text-align: center; padding: 20px; color: var(--muted); }
+  .login-box { max-width: 360px; margin: 0 auto; padding: 40px 20px; }
+  .member-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- LANDING -->
+<div id="page-landing">
+  <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;text-align:center;position:relative;overflow:hidden;">
+    <div class="glow"></div>
+    <div style="font-size:11px;letter-spacing:4px;color:var(--gold);text-transform:uppercase;margin-bottom:16px;font-weight:600;">Nepal's Premier Gym Platform</div>
+    <h1 class="logo gold-text" style="font-size:clamp(48px,10vw,72px);margin-bottom:16px;">PEAK<span style="font-weight:300;">PRO</span></h1>
+    <p style="color:var(--muted);font-size:16px;max-width:380px;line-height:1.7;margin-bottom:40px;">AI-powered gym management for Kathmandu's elite fitness centres.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:40px;">
+      <button class="btn btn-gold" style="width:auto;" onclick="showLogin('admin')">Admin Login</button>
+      <button class="btn btn-outline" onclick="showLogin('owner')">Gym Owner Login</button>
+      <button class="btn btn-outline" onclick="showLogin('member')">Member Login</button>
+    </div>
+    <div style="margin-top:20px;font-size:11px;color:var(--muted);">Made with ❤️ by <span style="color:var(--gold);font-weight:600;">Krishana Mahara</span> · Kathmandu, Nepal</div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="page-login" class="hidden">
+  <div class="header">
+    <div><div class="logo gold-text">PEAKPRO</div><div class="logo-sub" id="login-subtitle">LOGIN</div></div>
+    <button class="btn btn-outline btn-sm" onclick="showPage('landing')">← Back</button>
+  </div>
+  <div class="page">
+    <div class="login-box">
+      <div class="card">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:32px;margin-bottom:8px;">🔐</div>
+          <div style="font-size:16px;font-weight:700;" id="login-title">Login</div>
+        </div>
+        <input type="email" id="login-email" placeholder="Email address">
+        <input type="password" id="login-password" placeholder="Password">
+        <div id="login-error" class="error-msg hidden"></div>
+        <button class="btn btn-gold" onclick="doLogin()">Login</button>
+        <div style="text-align:center;margin-top:12px;">
+          <button onclick="showRegister()" style="background:none;border:none;color:var(--gold);font-size:12px;cursor:pointer;">New gym? Register here</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REGISTER -->
+<div id="page-register" class="hidden">
+  <div class="header">
+    <div><div class="logo gold-text">PEAKPRO</div><div class="logo-sub">REGISTER GYM</div></div>
+    <button class="btn btn-outline btn-sm" onclick="showLogin('owner')">← Back</button>
+  </div>
+  <div class="page">
+    <div class="card" style="max-width:400px;margin:0 auto;">
+      <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:16px;">Register Your Gym</div>
+      <input id="reg-gymname" placeholder="Gym Name (e.g. Elite Fitness)">
+      <input id="reg-owner" placeholder="Your Full Name">
+      <input id="reg-email" type="email" placeholder="Email Address">
+      <input id="reg-password" type="password" placeholder="Password (min 6 characters)">
+      <select id="reg-plan">
+        <option value="Starter">Starter — Rs. 2,999/month (50 members)</option>
+        <option value="Pro">Pro — Rs. 4,999/month (200 members)</option>
+        <option value="Elite">Elite — Rs. 7,999/month (Unlimited)</option>
+      </select>
+      <div id="reg-error" class="error-msg hidden"></div>
+      <div id="reg-success" class="success-msg hidden"></div>
+      <button class="btn btn-gold" onclick="doRegister()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="page-admin" class="hidden">
+  <div class="header">
+    <div><div class="logo gold-text">PEAKPRO</div><div class="logo-sub">ADMIN CONTROL</div></div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="text-align:right;"><div style="font-size:12px;color:var(--gold);font-weight:600;">Krishana Mahara</div><div style="font-size:10px;color:var(--muted);">Super Admin</div></div>
+      <button class="btn btn-outline btn-sm" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+  <div class="page">
+    <div class="grid-4" style="margin-bottom:20px;" id="admin-stats"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="tabs" style="margin:0;">
+        <button class="tab active" onclick="adminTab('gyms',this)">Gyms</button>
+        <button class="tab" onclick="adminTab('revenue',this)">Revenue</button>
+      </div>
+    </div>
+    <div id="admin-gyms-tab"><div id="gym-list" class="loading">Loading...</div></div>
+    <div id="admin-revenue-tab" class="hidden"><div id="rev-list"></div></div>
+  </div>
+</div>
+
+<!-- OWNER PANEL -->
+<div id="page-owner" class="hidden">
+  <div class="header">
+    <div><div class="logo gold-text">PEAKPRO</div><div class="logo-sub" id="owner-gymname-header">GYM OWNER</div></div>
+    <button class="btn btn-outline btn-sm" onclick="doLogout()">Logout</button>
+  </div>
+  <div class="page">
+    <div class="grid-3" style="margin-bottom:20px;" id="owner-stats"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="tabs" style="margin:0;">
+        <button class="tab active" onclick="ownerTab('dashboard',this)">Dashboard</button>
+        <button class="tab" onclick="ownerTab('members',this)">Members</button>
+      </div>
+      <button class="btn btn-gold btn-sm" id="add-member-btn" onclick="toggleAddMember()" style="display:none;">+ Add Member</button>
+    </div>
+    <div id="owner-dashboard-tab">
+      <div class="card" style="margin-bottom:12px;"><div style="font-size:13px;color:var(--gold);font-weight:700;margin-bottom:12px;">Member Goals</div><div id="goal-bars"></div></div>
+      <div class="card"><div style="font-size:13px;color:var(--gold);font-weight:700;margin-bottom:10px;">Recent Members</div><div id="recent-members-list"></div></div>
+    </div>
+    <div id="owner-members-tab" class="hidden">
+      <div id="add-member-form" class="card hidden" style="margin-bottom:12px;">
+        <div style="font-size:13px;color:var(--gold);font-weight:700;margin-bottom:10px;">Add New Member</div>
+        <input id="m-name" placeholder="Full Name">
+        <div class="grid-2">
+          <input id="m-age" type="number" placeholder="Age">
+          <input id="m-weight" type="number" placeholder="Weight (kg)">
+        </div>
+        <input id="m-height" type="number" placeholder="Height (cm)">
+        <select id="m-goal"><option>Weight Loss</option><option>Muscle Gain</option><option>Athletic</option><option>Toning</option></select>
+        <input id="m-email" type="email" placeholder="Member Email">
+        <input id="m-password" type="password" placeholder="Member Password">
+        <div id="member-error" class="error-msg hidden"></div>
+        <button class="btn btn-gold" onclick="addMember()">Add Member</button>
+      </div>
+      <div id="member-list" class="loading">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- MEMBER PANEL -->
+<div id="page-member" class="hidden">
+  <div class="header">
+    <div><div class="logo gold-text">PEAKPRO</div><div class="logo-sub">MEMBER PORTAL</div></div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="text-align:right;"><div style="font-size:12px;font-weight:600;" id="member-name-header">Member</div><div style="font-size:10px;color:var(--gold);">Elite Member</div></div>
+      <button class="btn btn-outline btn-sm" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+  <div class="page">
+    <div class="tabs">
+      <button class="tab active" onclick="memberTab('dashboard',this)">Dashboard</button>
+      <button class="tab" onclick="memberTab('workout',this)">Workout</button>
+      <button class="tab" onclick="memberTab('nutrition',this)">Nutrition</button>
+      <button class="tab" onclick="memberTab('progress',this)">Progress</button>
+    </div>
+    <div id="member-dashboard-tab">
+      <div class="card" style="text-align:center;margin-bottom:12px;">
+        <div style="font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Your Body Analysis</div>
+        <div id="bmi-display"></div>
+        <div class="divider"></div>
+        <div class="grid-3" id="member-stats-grid"></div>
+      </div>
+      <div class="card">
+        <div style="font-size:13px;color:var(--gold);font-weight:700;margin-bottom:10px;">Today's AI Tip 🧠</div>
+        <div style="font-size:13px;line-height:1.7;" id="ai-tip">Loading your personalized tip...</div>
+      </div>
+    </div>
+    <div id="member-workout-tab" class="hidden">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;" id="workout-title">AI WORKOUT PLAN</div>
+      <div id="workout-list"></div>
+      <div class="tip-box"><div style="font-size:12px;color:var(--gold);font-weight:600;margin-bottom:4px;">💡 Pro Tip</div><div style="font-size:12px;">Rest 60–90 seconds between sets. Track your reps to see weekly progress!</div></div>
+    </div>
+    <div id="member-nutrition-tab" class="hidden">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;" id="nutrition-title">NEPALI MEAL PLAN</div>
+      <div id="nutrition-list"></div>
+      <div class="tip-box"><div style="font-size:12px;color:var(--gold);font-weight:600;margin-bottom:4px;">💧 Hydration Goal</div><div style="font-size:12px;">Drink 3 liters of water daily. Start your morning with warm lemon water!</div></div>
+    </div>
+    <div id="member-progress-tab" class="hidden">
+      <div class="card" style="margin-bottom:12px;">
+        <div style="font-size:13px;color:var(--gold);font-weight:700;margin-bottom:12px;">Weekly Progress</div>
+        <div id="week-progress"></div>
+      </div>
+      <div class="card">
+        <div style="font-size:13px;color:var(--gold);font-weight:700;margin-bottom:10px;">Achievements 🏆</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:16px;">🥇</span><span>First Week Complete</span></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:16px;">🥇</span><span>5 Workouts Done</span></div>
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:16px;">🥇</span><span>BMI Tracked</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">Made with ❤️ by <span style="color:var(--gold);">Krishana Mahara</span></div>
+</div>
+
+<script>
+// ── SUPABASE SETUP ──────────────────────────────────────────────
+const SUPABASE_URL = 'https://swovemonhjsyhbjxhxrz.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_hxBrbK9N6UO2INYH5SgzsA_DtOAuUe3';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const ADMIN_EMAIL = 'krishana@peakpro.app';
+const ADMIN_PASSWORD = 'PeakPro@Admin2026';
+
+let currentUser = null;
+let currentRole = null;
+let currentGymData = null;
+let currentMemberData = null;
+
+// ── HELPERS ─────────────────────────────────────────────────────
+function bmi(w,h){return(w/((h/100)**2)).toFixed(1);}
+function bmiCat(b){
+  b=parseFloat(b);
+  if(b<18.5)return{label:"Underweight",color:"#2196F3"};
+  if(b<25)return{label:"Normal",color:"#4CAF50"};
+  if(b<30)return{label:"Overweight",color:"#FF9800"};
+  return{label:"Obese",color:"#E53935"};
+}
+function planColor(p){return p==="Elite"?"#C9A84C":p==="Pro"?"#7C3AED":"#6B6B6B";}
+function showErr(id,msg){const el=document.getElementById(id);el.textContent=msg;el.classList.remove('hidden');}
+function hideErr(id){document.getElementById(id).classList.add('hidden');}
+
+function workoutPlan(goal){
+  const p={
+    "Weight Loss":["30 min Cardio (Treadmill)","20 min HIIT Circuit","Core Workout — 3 sets","Cool down stretch — 10 min"],
+    "Muscle Gain":["Bench Press — 4×8","Deadlift — 4×6","Pull-ups — 3×10","Shoulder Press — 3×10"],
+    "Athletic":["Agility Ladder Drills","Box Jumps — 4×10","Sprint Intervals","Functional Strength Circuit"],
+    "Toning":["Full Body Circuit — 3 rounds","Resistance Band Workout","Pilates Core — 20 min","Yoga Flexibility — 15 min"]
+  };
+  return p[goal]||p["Weight Loss"];
+}
+function mealPlan(goal){
+  const p={
+    "Weight Loss":["🌅 बिहान: 2 boiled eggs + green tea","☀️ Lunch: Dal bhat (half rice) + salad","🍎 Snack: Apple + handful nuts","🌙 Dinner: Chicken soup + roti"],
+    "Muscle Gain":["🌅 बिहान: Oatmeal + banana + milk","☀️ Lunch: Full dal bhat + chicken","🍎 Snack: Peanut butter sandwich","🌙 Dinner: Rice + fish + vegetables"],
+    "Athletic":["🌅 बिहान: Banana smoothie + eggs","☀️ Lunch: Brown rice + lentils + chicken","🍎 Snack: Energy bar + coconut water","🌙 Dinner: Quinoa + mixed vegetables"],
+    "Toning":["🌅 बिहान: Yogurt + fruits","☀️ Lunch: Vegetable dal bhat","🍎 Snack: Green smoothie","🌙 Dinner: Grilled paneer + salad"]
+  };
+  return p[goal]||p["Weight Loss"];
+}
+function aiTip(goal){
+  const t={
+    "Weight Loss":"Focus on consistency over intensity. Aim for a 500 calorie daily deficit. Small daily wins compound into extraordinary results!",
+    "Muscle Gain":"Progressive overload is key — increase weight by 2.5kg each week. Protein intake should be 1.6g per kg of body weight.",
+    "Athletic":"Combine strength and cardio training. Focus on explosive movements. Recovery is as important as training!",
+    "Toning":"High rep, low weight is your friend. Combine resistance training with cardio. Stay consistent with your meal plan!"
+  };
+  return t[goal]||t["Weight Loss"];
+}
+
+// ── NAVIGATION ──────────────────────────────────────────────────
+function showPage(p){
+  ['landing','login','register','admin','owner','member'].forEach(x=>
+    document.getElementById('page-'+x).classList.add('hidden'));
+  document.getElementById('page-'+p).classList.remove('hidden');
+}
+
+let loginRole = 'owner';
+function showLogin(role){
+  loginRole = role;
+  document.getElementById('login-subtitle').textContent = role.toUpperCase()+' LOGIN';
+  document.getElementById('login-title').textContent = role==='admin'?'Admin Login':role==='owner'?'Gym Owner Login':'Member Login';
+  if(role==='admin'){
+    document.getElementById('login-email').value=ADMIN_EMAIL;
+  } else {
+    document.getElementById('login-email').value='';
+  }
+  document.getElementById('login-password').value='';
+  hideErr('login-error');
+  showPage('login');
+}
+function showRegister(){showPage('register');}
+
+// ── AUTH ────────────────────────────────────────────────────────
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const password=document.getElementById('login-password').value;
+  hideErr('login-error');
+  if(!email||!password){showErr('login-error','Email ra password haalnuhos!');return;}
+
+  // Admin check
+  if(loginRole==='admin'){
+    if(email===ADMIN_EMAIL && password===ADMIN_PASSWORD){
+      currentRole='admin';
+      showPage('admin');
+      loadAdminData();
+      return;
+    } else {
+      showErr('login-error','Admin credentials galat xa!');return;
+    }
+  }
+
+  // Supabase login for owner/member
+  const {data,error}=await db.auth.signInWithPassword({email,password});
+  if(error){showErr('login-error','Email ya password galat xa!');return;}
+  currentUser=data.user;
+
+  if(loginRole==='owner'){
+    const {data:gym}=await db.from('gyms').select('*').eq('owner_id',currentUser.id).single();
+    if(!gym){showErr('login-error','Gym account felauna sakiena!');return;}
+    currentGymData=gym;
+    document.getElementById('owner-gymname-header').textContent=gym.name.toUpperCase();
+    showPage('owner');
+    loadOwnerData();
+  } else {
+    const {data:member}=await db.from('members').select('*').eq('user_id',currentUser.id).single();
+    if(!member){showErr('login-error','Member account felauna sakiena!');return;}
+    currentMemberData=member;
+    document.getElementById('member-name-header').textContent=member.name;
+    showPage('member');
+    loadMemberData();
+  }
+}
+
+async function doRegister(){
+  const gymname=document.getElementById('reg-gymname').value.trim();
+  const owner=document.getElementById('reg-owner').value.trim();
+  const email=document.getElementById('reg-email').value.trim();
+  const password=document.getElementById('reg-password').value;
+  const plan=document.getElementById('reg-plan').value;
+  hideErr('reg-error');
+  document.getElementById('reg-success').classList.add('hidden');
+  if(!gymname||!owner||!email||!password){showErr('reg-error','Sabai fields bharnu parxa!');return;}
+  if(password.length<6){showErr('reg-error','Password kam se kam 6 characters hunu parxa!');return;}
+
+  const {data,error}=await db.auth.signUp({email,password});
+  if(error){showErr('reg-error',error.message);return;}
+
+  const fees={Starter:2999,Pro:4999,Elite:7999};
+  await db.from('gyms').insert({
+    owner_id:data.user.id, name:gymname, owner_name:owner,
+    plan, monthly_fee:fees[plan], status:'active',
+    logo:gymname.slice(0,2).toUpperCase()
+  });
+
+  document.getElementById('reg-success').textContent='Account banayo! Email verify garnus ani login garnuhos.';
+  document.getElementById('reg-success').classList.remove('hidden');
+}
+
+async function doLogout(){
+  await db.auth.signOut();
+  currentUser=null;currentRole=null;currentGymData=null;currentMemberData=null;
+  showPage('landing');
+}
+
+// ── ADMIN ───────────────────────────────────────────────────────
+async function loadAdminData(){
+  document.getElementById('gym-list').innerHTML='<div class="loading">Loading...</div>';
+  const {data:gyms}=await db.from('gyms').select('*').order('created_at',{ascending:false});
+  if(!gyms||gyms.length===0){
+    document.getElementById('gym-list').innerHTML='<div class="loading">Koi gym register bhako xaina abhi!</div>';
+    document.getElementById('admin-stats').innerHTML=`
+      <div class="stat-card"><div style="font-size:24px;">🏋️</div><div class="stat-val">0</div><div class="stat-label">Active Gyms</div></div>
+      <div class="stat-card"><div style="font-size:24px;">💰</div><div class="stat-val">Rs. 0</div><div class="stat-label">Monthly Revenue</div></div>`;
+    return;
+  }
+  const active=gyms.filter(g=>g.status==='active');
+  const rev=active.reduce((s,g)=>s+g.monthly_fee,0);
+  document.getElementById('admin-stats').innerHTML=`
+    <div class="stat-card"><div style="font-size:24px;">🏋️</div><div class="stat-val">${active.length}</div><div class="stat-label">Active Gyms</div></div>
+    <div class="stat-card"><div style="font-size:24px;">🏢</div><div class="stat-val">${gyms.length}</div><div class="stat-label">Total Gyms</div></div>
+    <div class="stat-card"><div style="font-size:24px;">💰</div><div class="stat-val">Rs. ${rev.toLocaleString()}</div><div class="stat-label">Monthly Revenue</div></div>`;
+  document.getElementById('gym-list').innerHTML=gyms.map(g=>`
+    <div class="gym-row">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="gym-logo">${g.logo||g.name.slice(0,2).toUpperCase()}</div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;">${g.name}</div>
+          <div style="font-size:11px;color:var(--muted);">${g.owner_name}</div>
+        </div>
+        <div style="text-align:right;">
+          <span class="badge" style="background:${planColor(g.plan)}22;color:${planColor(g.plan)};border:1px solid ${planColor(g.plan)}44;">${g.plan}</span><br>
+          <span class="badge" style="margin-top:4px;background:${g.status==='active'?'#4CAF5022':'#E5393522'};color:${g.status==='active'?'#4CAF50':'#E53935'};border:1px solid ${g.status==='active'?'#4CAF5044':'#E5393544'};">${g.status}</span>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:13px;color:var(--gold);font-weight:700;">Rs. ${g.monthly_fee.toLocaleString()}/month</div>
+        <button class="btn btn-outline btn-sm" onclick="toggleGym('${g.id}','${g.status}')">${g.status==='active'?'Deactivate':'Activate'}</button>
+      </div>
+    </div>`).join('');
+  document.getElementById('rev-list').innerHTML=`
+    <div class="card" style="margin-bottom:12px;">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:4px;">This Month</div>
+      <div class="gold-text" style="font-size:28px;font-weight:800;">Rs. ${rev.toLocaleString()}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">From ${active.length} active subscriptions</div>
+    </div>`+
+    gyms.map(g=>`
+    <div class="gym-row" style="margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div><div style="font-size:13px;font-weight:600;">${g.name}</div><div style="font-size:11px;color:var(--muted);">${g.plan} Plan</div></div>
+        <div style="text-align:right;">
+          <div style="font-size:14px;font-weight:700;color:${g.status==='active'?'var(--gold)':'var(--muted)'};">${g.status==='active'?'Rs. '+g.monthly_fee.toLocaleString():'—'}</div>
+          <span class="badge" style="background:${g.status==='active'?'#4CAF5022':'#E5393522'};color:${g.status==='active'?'#4CAF50':'#E53935'};border:1px solid ${g.status==='active'?'#4CAF5044':'#E5393544'};">${g.status}</span>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function toggleGym(id,status){
+  const newStatus=status==='active'?'expired':'active';
+  await db.from('gyms').update({status:newStatus}).eq('id',id);
+  loadAdminData();
+}
+
+function adminTab(t,el){
+  document.querySelectorAll('#page-admin .tab').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('admin-gyms-tab').classList.toggle('hidden',t!=='gyms');
+  document.getElementById('admin-revenue-tab').classList.toggle('hidden',t!=='revenue');
+}
+
+// ── OWNER ───────────────────────────────────────────────────────
+async function loadOwnerData(){
+  const {data:members}=await db.from('members').select('*').eq('gym_id',currentGymData.id).order('created_at',{ascending:false});
+  const mems=members||[];
+  document.getElementById('owner-stats').innerHTML=`
+    <div class="stat-card"><div style="font-size:20px;">👥</div><div class="stat-val">${mems.length}</div><div class="stat-label">Members</div></div>
+    <div class="stat-card"><div style="font-size:20px;">👑</div><div class="stat-val">${currentGymData.plan}</div><div class="stat-label">Plan</div></div>
+    <div class="stat-card"><div style="font-size:20px;">✅</div><div class="stat-val" style="color:var(--success);font-size:13px;">Active</div><div class="stat-label">Status</div></div>`;
+  const goals=["Weight Loss","Muscle Gain","Athletic","Toning"];
+  document.getElementById('goal-bars').innerHTML=goals.map(g=>{
+    const c=mems.filter(m=>m.goal===g).length;
+    const p=mems.length?(c/mems.length*100):0;
+    return`<div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span>${g}</span><span style="color:var(--muted);">${c}</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${p}%"></div></div></div>`;
+  }).join('');
+  document.getElementById('recent-members-list').innerHTML=mems.length===0?
+    '<div style="color:var(--muted);font-size:13px;">Abhi koi member xaina. Members tab bata add gara!</div>':
+    mems.slice(0,3).map(m=>`
+    <div class="member-row"><div><div style="font-size:13px;font-weight:600;">${m.name}</div><div style="font-size:11px;color:var(--muted);">${m.goal}</div></div>
+    <div style="font-size:11px;color:var(--muted);">${m.created_at?m.created_at.slice(0,10):''}</div></div>`).join('');
+  document.getElementById('member-list').innerHTML=mems.length===0?
+    '<div class="loading">Koi member xaina — "+ Add Member" click gara!</div>':
+    mems.map(m=>{
+      const b=bmi(m.weight,m.height);const cat=bmiCat(b);
+      return`<div class="gym-row">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div><div style="font-size:14px;font-weight:700;">${m.name}</div><div style="font-size:11px;color:var(--muted);">Age ${m.age} · ${m.weight}kg · ${m.height}cm</div></div>
+          <div style="text-align:right;"><div style="font-size:16px;font-weight:700;color:${cat.color};">${b}</div><div style="font-size:10px;color:${cat.color};">${cat.label}</div></div>
+        </div>
+        <div style="margin-top:6px;"><span class="badge" style="background:rgba(201,168,76,0.1);color:var(--gold);border:1px solid rgba(201,168,76,0.2);">${m.goal}</span></div>
+      </div>`;
+    }).join('');
+}
+
+function ownerTab(t,el){
+  document.querySelectorAll('#page-owner .tab').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('owner-dashboard-tab').classList.toggle('hidden',t!=='dashboard');
+  document.getElementById('owner-members-tab').classList.toggle('hidden',t!=='members');
+  document.getElementById('add-member-btn').style.display=t==='members'?'block':'none';
+}
+function toggleAddMember(){document.getElementById('add-member-form').classList.toggle('hidden');}
+
+async function addMember(){
+  const name=document.getElementById('m-name').value.trim();
+  const email=document.getElementById('m-email').value.trim();
+  const password=document.getElementById('m-password').value;
+  hideErr('member-error');
+  if(!name||!email||!password){showErr('member-error','Sabai fields bharnu parxa!');return;}
+
+  const {data,error}=await db.auth.signUp({email,password});
+  if(error){showErr('member-error',error.message);return;}
+
+  await db.from('members').insert({
+    user_id:data.user.id, gym_id:currentGymData.id, name,
+    age:+document.getElementById('m-age').value,
+    weight:+document.getElementById('m-weight').value,
+    height:+document.getElementById('m-height').value,
+    goal:document.getElementById('m-goal').value
+  });
+  document.getElementById('m-name').value='';
+  document.getElementById('m-email').value='';
+  document.getElementById('m-password').value='';
+  document.getElementById('add-member-form').classList.add('hidden');
+  loadOwnerData();
+}
+
+// ── MEMBER ──────────────────────────────────────────────────────
+function loadMemberData(){
+  const m=currentMemberData;
+  const b=bmi(m.weight,m.height);
+  const cat=bmiCat(b);
+  const pct=Math.min(Math.max((parseFloat(b)-10)/30,0),1);
+  const circ=2*Math.PI*44;
+  document.getElementById('bmi-display').innerHTML=`
+    <svg width="108" height="108" style="filter:drop-shadow(0 0 8px ${cat.color}66);">
+      <circle cx="54" cy="54" r="44" fill="none" stroke="#2A2A2A" stroke-width="8"/>
+      <circle cx="54" cy="54" r="44" fill="none" stroke="${cat.color}" stroke-width="8"
+        stroke-dasharray="${circ}" stroke-dashoffset="${circ*(1-pct)}"
+        stroke-linecap="round" transform="rotate(-90 54 54)"/>
+      <text x="54" y="50" text-anchor="middle" fill="#F5F0E8" font-size="18" font-weight="700">${b}</text>
+      <text x="54" y="66" text-anchor="middle" fill="#6B6B6B" font-size="10">BMI</text>
+    </svg>
+    <div style="color:${cat.color};font-weight:700;font-size:13px;">${cat.label}</div>`;
+  document.getElementById('member-stats-grid').innerHTML=`
+    <div><div style="font-size:14px;font-weight:700;color:var(--gold);">${m.weight} kg</div><div style="font-size:10px;color:var(--muted);">Weight</div></div>
+    <div><div style="font-size:14px;font-weight:700;color:var(--gold);">${m.height} cm</div><div style="font-size:10px;color:var(--muted);">Height</div></div>
+    <div><div style="font-size:12px;font-weight:700;color:var(--gold);">${m.goal}</div><div style="font-size:10px;color:var(--muted);">Goal</div></div>`;
+  document.getElementById('ai-tip').textContent=aiTip(m.goal);
+  document.getElementById('workout-title').textContent=`AI WORKOUT PLAN · ${m.goal.toUpperCase()}`;
+  document.getElementById('nutrition-title').textContent=`NEPALI MEAL PLAN · ${m.goal.toUpperCase()}`;
+  document.getElementById('workout-list').innerHTML=workoutPlan(m.goal).map((e,i)=>`
+    <div class="exercise-item"><div class="num-circle">${i+1}</div><div>${e}</div></div>`).join('');
+  document.getElementById('nutrition-list').innerHTML=mealPlan(m.goal).map(e=>`
+    <div class="exercise-item"><div style="font-size:22px;flex-shrink:0;">${e.split(' ')[0]}</div><div style="font-size:13px;">${e.slice(e.indexOf(' ')+1)}</div></div>`).join('');
+  const days=["Mon","Tue","Wed","Thu","Fri","Sat"];
+  document.getElementById('week-progress').innerHTML=days.map((d,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <div style="width:36px;font-size:11px;color:var(--muted);">${d}</div>
+      <div class="progress-bar" style="flex:1;">${i<4?`<div class="progress-fill" style="width:${60+i*8}%"></div>`:''}</div>
+      <div style="font-size:16px;">${i<4?'✅':'⬜'}</div>
+    </div>`).join('');
+}
+
+function memberTab(t,el){
+  document.querySelectorAll('#page-member .tab').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  ['dashboard','workout','nutrition','progress'].forEach(x=>
+    document.getElementById('member-'+x+'-tab').classList.toggle('hidden',x!==t));
+}
+
+// INIT
+showPage('landing');
+</script>
+</body>
+</html>
